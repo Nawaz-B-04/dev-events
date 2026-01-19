@@ -39,7 +39,8 @@ const BookingSchema = new Schema<IBooking>(
 BookingSchema.index({ eventId: 1 });
 
 // Compound index for preventing duplicate bookings (optional but recommended)
-BookingSchema.index({ eventId: 1, email: 1 });
+BookingSchema.index({ eventId: 1, email: 1 },
+    {unique: true , name : 'uniq_event_email'});
 
 /**
  * Pre-save hook to validate that the referenced event exists
