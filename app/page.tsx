@@ -1,11 +1,19 @@
 import ExploreBtn from "@/components/ExploreBtn";
 import EventCard from "@/components/EventCard";
-import {events} from "@/lib/constants";
-export default function Home() {
+import { IEvent } from "@/database/event.model";
+import connectDB from "@/lib/mongodb";
+import Event from "@/database/event.model";
+import { cacheLife } from "next/cache";
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL
+
+const Home =async() => {
+  'use cache'
+  cacheLife('hours')
+  const response = await fetch(`${BASE_URL}/api/events`)
+  const {events} = await response.json()
   return (
     <>
-
       <section>
         <h1 className="text-center" >The hub of every Dev <br /> Event you cant miss</h1>
         <p className="text-center mt-5">Hackathons, Meetups and Conferences, All in one place</p>
@@ -14,16 +22,20 @@ export default function Home() {
         <div className="mt-20 space-y-7">
           <h3>Fetaure Events</h3>
 
-          <div className="events">
-            {events.map((event, key)=>(
-              <EventCard key={key} {...event}/>
+          <ul className="events">
+            {events && events.length > 0 && events.map((event: IEvent) => (
+                <li key={event.title} className="list-none">
+                  <EventCard {...event}/>
+                </li> 
             ))}
- 
-          </div>
-         
-          
+
+          </ul>
+
+
         </div>
       </section>
     </>
   )
 }
+
+export default Home
