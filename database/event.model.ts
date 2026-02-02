@@ -112,7 +112,7 @@ EventSchema.index({ slug: 1 });
 /**
  * Pre-save hook to handle slug generation and date/time normalization
  */
-EventSchema.pre('save', function (next) {
+EventSchema.pre('save',async function () {
   // Generate slug from title only if title has changed
   if (this.isModified('title')) {
     this.slug = this.title
@@ -129,12 +129,12 @@ EventSchema.pre('save', function (next) {
     try {
       const parsedDate = new Date(this.date);
       if (isNaN(parsedDate.getTime())) {
-        return next(new Error('Invalid date format'));
+        return new Error('Invalid date format');
       }
       // Store as ISO date string (YYYY-MM-DD)
       this.date = parsedDate.toISOString().split('T')[0];
     } catch (error) {
-      return next(new Error('Invalid date format'));
+      return new Error('Invalid date format');
     }
   }
 
@@ -142,14 +142,12 @@ EventSchema.pre('save', function (next) {
   if (this.isModified('time')) {
     const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
     if (!timeRegex.test(this.time)) {
-      return next(new Error('Time must be in HH:MM format (24-hour)'));
+      return new Error('Time must be in HH:MM format (24-hour)');
     }
     // Ensure zero-padding (e.g., 9:30 -> 09:30)
     const [hours, minutes] = this.time.split(':');
     this.time = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
   }
-
-  next();
 });
 
 // Create and export the model
