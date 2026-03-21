@@ -7,43 +7,37 @@ import { redirect, notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 
-import { Suspense } from "react";
 
-function EventAttendeesPageInner({ id, token }: { id: string, token: string | null }) {
+export default async function EventAttendeesPage({ params }: { params: { id: string } }) {
+    const { id } = params;
+    const cookieStore = await cookies();
+    const token = cookieStore.get("auth_token")?.value || null;
     if (!token) redirect("/login");
     const secretKey = new TextEncoder().encode(process.env.JWT_SECRET || "fallback_dev_password");
     let userId;
     try {
-        const { payload } = jwtVerify(token, secretKey);
+        const { payload } = await jwtVerify(token, secretKey);
         userId = payload.userId;
     } catch {
         redirect("/login");
     }
-    // ...existing code to fetch event, verify ownership, and render...
-    return null; // Replace with actual JSX
-}
-
-export default function EventAttendeesPageWrapper({ params }: { params: { id: string } }) {
-    return (
-        <Suspense fallback={<div>Loading event attendees...</div>}>
-            <EventAttendeesPageWithCookies params={params} />
-        </Suspense>
-    );
-}
-
-async function EventAttendeesPageWithCookies({ params }: { params: { id: string } }) {
-    const { id } = params;
-    const cookieStore = await cookies();
-    const token = cookieStore.get("auth_token")?.value || null;
-    return <EventAttendeesPageInner id={id} token={token} />;
+    await connectDB();
+    // 1. Fetch Event & Verify Ownership
+    const event = await Event.findById(id);
+    if (!event) notFound();
+    if (event.organizerId.toString() !== userId) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-white">
+                <h1 className="text-3xl font-bold text-red-500 mb-4">Access Denied</h1>
+                <p>You are not the organizer of this event.</p>
+                <Link href="/my-events" className="mt-6 text-blue-400 hover:underline">Go Back</Link>
+            </div>
+        );
     }
-
     // 2. Fetch Bookings for this Event
     const bookings = await Booking.find({ eventId: id }).sort({ createdAt: -1 });
-
     // Calculate Total Tickets Sold
     const totalTickets = bookings.reduce((acc, booking) => acc + booking.guestCount, 0);
-
     return (
         <section className="bg-slate-950 min-h-screen py-10 px-6 text-white">
             <div className="max-w-7xl mx-auto">
@@ -58,7 +52,6 @@ async function EventAttendeesPageWithCookies({ params }: { params: { id: string 
                         <span className="text-2xl font-bold text-green-400">{totalTickets}</span>
                     </div>
                 </div>
-
                 {/* Attendees Table */}
                 <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
                     <div className="overflow-x-auto">
