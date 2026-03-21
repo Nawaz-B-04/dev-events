@@ -7,10 +7,23 @@ export interface IBooking extends Document {
   email: string;
   createdAt: Date;
   updatedAt: Date;
+  name: string;
+  guestCount: number;
 }
 
 const BookingSchema = new Schema<IBooking>(
   {
+    name: {
+      type: String,
+      required: [true, 'Name is required'],
+      trim: true,
+    },
+    guestCount: {
+      type: Number,
+      required: [true, 'Guest count is required'],
+      min: [1, 'Guest count must be at least 1'],
+      max: [10, 'Guest count must be at most 10'],
+    },
     eventId: {
       type: Schema.Types.ObjectId,
       ref: 'Event',
