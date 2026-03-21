@@ -9,13 +9,10 @@ export async function middleware(request: NextRequest) {
         request.nextUrl.pathname.startsWith("/my-events");
 
     if (isProtected) {
-
         const token = request.cookies.get("auth_token")?.value;
-
         if (!token) {
             return NextResponse.redirect(new URL("/login", request.url));
         }
-
         try {
             const secretKey = new TextEncoder().encode(process.env.JWT_SECRET || "fallback_dev_password");
             await jwtVerify(token, secretKey);
@@ -24,7 +21,6 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL("/login", request.url));
         }
     }
-
     return NextResponse.next();
 }
 
