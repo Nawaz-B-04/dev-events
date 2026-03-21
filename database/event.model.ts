@@ -14,6 +14,7 @@ export interface IEvent extends Document {
   mode: string;
   audience: string;
   agenda: string[];
+  organizerId: Document;
   organizer: string;
   tags: string[];
   createdAt: Date;
@@ -87,6 +88,11 @@ const EventSchema = new Schema<IEvent>(
         message: 'Agenda must contain at least one item',
       },
     },
+    organizerId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
     organizer: {
       type: String,
       required: [true, 'Organizer is required'],
@@ -106,13 +112,12 @@ const EventSchema = new Schema<IEvent>(
   }
 );
 
-// Index on slug for fast lookups
-EventSchema.index({ slug: 1 });
+
 
 /**
  * Pre-save hook to handle slug generation and date/time normalization
  */
-EventSchema.pre('save',async function () {
+EventSchema.pre('save', async function () {
   // Generate slug from title only if title has changed
   if (this.isModified('title')) {
     this.slug = this.title

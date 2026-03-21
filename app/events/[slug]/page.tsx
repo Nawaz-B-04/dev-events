@@ -5,7 +5,8 @@ import { getSimilarEventsBySlug } from "@/lib/actions/event.actions"
 import { IEvent } from "@/database"
 import EventCard from "@/components/EventCard"
 
-
+import { cookies } from "next/headers";
+import { jwtVerify } from "jose";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL
 
@@ -46,27 +47,66 @@ const EventTags = ({ tags }: { tags: string[] }) => (
 
 
 
-
 export default async function EventPageDetails({ params }: { params: Promise<{ slug: string }> }) {
+    const cookieStore = await cookies();
+const token = cookieStore.get("auth_token")?.value;
+let user = null; // Default: No user logged in
+// 2. If token exists, decode it to get email/userId
+if (token) {
+  try {
+    const secretKey = new TextEncoder().encode(process.env.JWT_SECRET!);
+    const { payload } = await jwtVerify(token, secretKey);
+    user = payload; // Now 'user' has { email: "...", userId: "..." }
+  } catch (err) {
+    // Token invalid (expired), ignore it
+  }
+}
+
     const { slug } = await params
     const request = await fetch(`${BASE_URL}/api/events/${slug}`)
-    console.log("fetch succsfull")
-    const { event: { audience, description, image, overview, date, time, location, title, mode, agenda, price, category, organizer, tags } } = await request.json()
+    console.log("fetch succesfull")
+    const { event: { audience, description, image, overview, date, time, location, title, mode, agenda, price, category, organizer, tags, _id } } = await request.json()
     const bookings = 10
-    const similarEvents : IEvent[] = await getSimilarEventsBySlug(slug)
-    if(!similarEvents) return []
+    const similarEvents: IEvent[] = await getSimilarEventsBySlug(slug)
+    if (!similarEvents) return []
 
     if (!description) return notFound()
-    return (
-        <section id="event">
-            <div className="header">
-                <h1>Event desciption</h1>
-                <div className="mt-2">{description}</div>
-            </div>
+import { Suspense } from "react";
 
-            <div className="details">
-                <div className="content">
-                    <Image src={image} alt={title} width={800} height={800} className="banner" />
+function EventPageDetailsInner({ token }: { token: string | null }) {
+    let user = null;
+    if (token) {
+        try {
+            const secretKey = new TextEncoder().encode(process.env.JWT_SECRET!);
+            const { payload } = jwtVerify(token, secretKey);
+            user = payload;
+        } catch (err) {}
+    }
+    // ...existing code for rendering event details, using user if needed...
+    return null; // Replace with actual JSX
+}
+
+export default function EventPageDetailsWrapper({ params }: { params: Promise<{ slug: string }> }) {
+    return (
+        <Suspense fallback={<div>Loading event details...</div>}>
+            <EventPageDetailsWithCookies params={params} />
+        </Suspense>
+    );
+}
+
+async function EventPageDetailsWithCookies({ params }: { params: Promise<{ slug: string }> }) {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("auth_token")?.value || null;
+    return <EventPageDetailsInner token={token} />;
+                        <Image
+                            src={image}
+                            alt={title}
+                            fill
+                            className="object-cover"
+                            priority
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw"
+                        />
+                    </div>
 
                     <section className="flex-col-gap-2">
                         <h2>Overview</h2>
@@ -92,7 +132,7 @@ export default async function EventPageDetails({ params }: { params: Promise<{ s
                 </div>
 
 
-            {/* Right side booking form*/}
+                {/* Right side booking form*/}
                 <aside className="booking">
                     <div className="signup-card">
                         <h2>Book your spot</h2>
@@ -100,23 +140,23 @@ export default async function EventPageDetails({ params }: { params: Promise<{ s
                             <p className="text-sm">
                                 Join {bookings} people who have already booked their spot!
                             </p>
-                        ): <p className="text-sm">Be the first to book your spot!</p>}
+                        ) : <p className="text-sm">Be the first to book your spot!</p>}
 
-                        <BookEvent />
-                        
+                        <BookEvent eventId={_id} userId={user?.userId as string} />
+
                     </div>
                 </aside>
             </div>
-            
+
             <div className="flex w-full flex-col gap-4 pt-20">
                 <h2>Similar Events</h2>
-               <div className="events">
-                 {
-                    similarEvents.length > 0 && similarEvents.map((event : IEvent) => (
-                        <EventCard key={event.title} {...event}/>
-                     ))          
-                }
-               </div>
+                <div className="events">
+                    {
+                        similarEvents.length > 0 && similarEvents.map((event: IEvent) => (
+                            <EventCard key={event.title} {...event} />
+                        ))
+                    }
+                </div>
             </div>
         </section>
     )
